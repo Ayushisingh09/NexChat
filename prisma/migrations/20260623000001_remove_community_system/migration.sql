@@ -1,0 +1,19 @@
+-- DropCommunitySystem
+DROP TABLE IF EXISTS "CommunityAuditLog" CASCADE;
+DROP TABLE IF EXISTS "CommunityBan" CASCADE;
+DROP TABLE IF EXISTS "CommunityReport" CASCADE;
+DROP TABLE IF EXISTS "ModAction" CASCADE;
+DROP TABLE IF EXISTS "ModSettings" CASCADE;
+DROP TABLE IF EXISTS "CommunityLeaderboardEntry" CASCADE;
+DROP TABLE IF EXISTS "CommunityHighlight" CASCADE;
+DROP TABLE IF EXISTS "CommunityAchievement" CASCADE;
+DROP TABLE IF EXISTS "CommunityRating" CASCADE;
+DROP TABLE IF EXISTS "CommunityEventAttendee" CASCADE;
+DROP TABLE IF EXISTS "CommunityEvent" CASCADE;
+DROP TABLE IF EXISTS "CustomRoleMember" CASCADE;
+DROP TABLE IF EXISTS "CustomRole" CASCADE;
+DROP TABLE IF EXISTS "Community" CASCADE;
+DROP TYPE IF EXISTS "CommunityVisibility";
+DROP TYPE IF EXISTS "CommunityCategory";
+DROP TYPE IF EXISTS "VerificationStatus";
+DROP TYPE IF EXISTS "EventStatus";

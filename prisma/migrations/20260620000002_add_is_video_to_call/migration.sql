@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Call" ADD COLUMN "isVideo" BOOLEAN NOT NULL DEFAULT false;

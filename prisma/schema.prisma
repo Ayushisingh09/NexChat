@@ -1,0 +1,518 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearchPostgres"]
+}
+
+enum ConversationType {
+  DIRECT
+  GROUP
+}
+
+enum ParticipantRole {
+  MEMBER
+  ADMIN
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  AUDIO
+  VIDEO
+  FILE
+  POLL
+}
+
+enum MessageStatus {
+  SENT
+  DELIVERED
+  READ
+}
+
+enum StoryType {
+  IMAGE
+  VIDEO
+  TEXT
+}
+
+model User {
+  id                   String   @id @default(uuid())
+  email                String?  @unique
+  phone                String?  @unique
+  username             String?  @unique
+  passwordHash         String?
+  displayName          String?
+  avatar               String?
+  bio                  String?  @default("Hey there! I am using NexChat.")
+  fcmToken             String?
+  lastSeen             DateTime @default(now())
+  lastSeenVisibility   String   @default("EVERYONE")
+  showEmail            Boolean  @default(false)
+  readReceiptsEnabled  Boolean  @default(true)
+  notificationsEnabled Boolean  @default(true)
+  notificationSound    Boolean  @default(true)
+  isPublic             Boolean  @default(false)
+  cipherTier           Int      @default(0)
+  createdAt            DateTime @default(now())
+
+  // Relations
+  refreshTokens           RefreshToken[]
+  participants            Participant[]
+  messages                Message[]                   @relation("SentMessages")
+  messageReads            MessageRead[]
+  blocksCreated           Block[]                     @relation("Blocker")
+  blocksReceived          Block[]                     @relation("Blocked")
+  reportsCreated          Report[]                    @relation("Reporter")
+  reportsReceived         Report[]                    @relation("Reported")
+  deletedMessages         MessageDelete[]
+  reactions               Reaction[]
+  stars                   Star[]
+  pollVotes               PollVote[]
+  invitesCreated          GroupInvite[]               @relation("InviteCreator")
+  stories                 Story[]                     @relation("UserStories")
+  storyViews              StoryView[]                 @relation("StoryViews")
+  storyReactions          StoryReaction[]             @relation("StoryReactions")
+  friendships             Friendship[]                @relation("UserFriendships")
+  friendOf                Friendship[]                @relation("FriendOf")
+  sentRequests            FriendRequest[]             @relation("SentRequests")
+  receivedRequests        FriendRequest[]             @relation("ReceivedRequests")
+  joinRequests            JoinRequest[]
+  auditLogsActor          GroupAuditLog[]             @relation("AuditActor")
+  auditLogsTarget         GroupAuditLog[]             @relation("AuditTarget")
+  callsInitiated          Call[]                      @relation("Caller")
+  callsReceived           Call[]                      @relation("Callee")
+  cipherMessages          CipherMessage[]
+  cipherConversations     CipherConversation[]
+  cipherUsage             CipherUsage[]
+  cipherFeedback          CipherFeedback[]
+}
+
+model RefreshToken {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token      String   @unique
+  expiresAt  DateTime
+  userAgent  String?
+  ip         String?
+  lastUsedAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Conversation {
+  id        String           @id @default(uuid())
+  type      ConversationType @default(DIRECT)
+  name      String?
+  avatar    String?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @default(now()) @updatedAt
+
+  disappearingTtlSeconds Int?
+
+  description        String?
+  isAnnouncementMode Boolean @default(false)
+  requiresApproval   Boolean @default(false)
+  isPublic           Boolean @default(false)
+  invitePermission   String  @default("EVERYONE")
+  messagePermission  String  @default("EVERYONE")
+  editPermission     String  @default("ADMINS")
+
+  // Relations
+  participants Participant[]
+  messages     Message[]
+  invites      GroupInvite[]
+  joinRequests JoinRequest[]
+  auditLogs    GroupAuditLog[]
+}
+
+model GroupInvite {
+  id             String       @id @default(uuid())
+  token          String       @unique
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  createdById    String
+  createdBy      User         @relation("InviteCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  expiresAt      DateTime?
+  maxUses        Int?
+  useCount       Int          @default(0)
+  revoked        Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId])
+}
+
+model Participant {
+  id             String          @id @default(uuid())
+  userId         String
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversationId String
+  conversation   Conversation    @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           ParticipantRole @default(MEMBER)
+  joinedAt       DateTime        @default(now())
+
+  readWatermarkId      String?
+  deliveredWatermarkId String?
+  clearedAt            DateTime?
+  pinnedAt             DateTime?
+  mutedUntil           DateTime?
+  archivedAt           DateTime?
+
+  notificationPreference String @default("ALL")
+
+
+  @@unique([userId, conversationId])
+}
+
+model Message {
+  id             String        @id @default(uuid())
+  conversationId String
+  conversation   Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User          @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  content        String
+  type           MessageType   @default(TEXT)
+  mediaUrl       String?
+  status         MessageStatus @default(SENT)
+  createdAt      DateTime      @default(now())
+
+  replyToId String?
+  replyTo   Message?  @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies   Message[] @relation("MessageReplies")
+  isDeleted Boolean   @default(false)
+
+  forwardedFromId String?
+  forwardedFrom   Message?  @relation("ForwardedMessages", fields: [forwardedFromId], references: [id], onDelete: SetNull)
+  forwardedTo     Message[] @relation("ForwardedMessages")
+
+  editedAt         DateTime?
+  mentionedUserIds String[]
+  expiresAt        DateTime?
+
+  scheduledAt     DateTime?
+  pollOptionCount Int?
+
+  // Shared (conversation-wide) pin — visible to all participants
+  pinnedAt       DateTime?
+  pinnedById     String?
+  highlightScore Int       @default(0)
+
+  // Relations
+  reads            MessageRead[]
+  deletedFromUsers MessageDelete[]
+  reactions        Reaction[]
+  stars            Star[]
+  pollVotes        PollVote[]
+
+  @@index([createdAt])
+  @@index([expiresAt])
+  @@index([scheduledAt])
+  @@index([conversationId, pinnedAt])
+  // Message pagination + clearedAt range scans within a conversation.
+  @@index([conversationId, createdAt])
+  // Unread counts and mark-as-read filter by conversation + status + sender.
+  @@index([conversationId, status, senderId])
+}
+
+model PollVote {
+  id          String   @id @default(uuid())
+  messageId   String
+  message     Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  optionIndex Int
+  createdAt   DateTime @default(now())
+
+  @@unique([messageId, userId])
+  @@index([messageId])
+}
+
+model Star {
+  id        String   @id @default(uuid())
+  messageId String
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([messageId, userId])
+  @@index([userId])
+}
+
+model Reaction {
+  id        String   @id @default(uuid())
+  messageId String
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emoji     String
+  createdAt DateTime @default(now())
+
+  @@unique([messageId, userId, emoji])
+  @@index([messageId])
+}
+
+model MessageRead {
+  id        String   @id @default(uuid())
+  messageId String
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  readAt    DateTime @default(now())
+
+  @@unique([messageId, userId])
+  @@index([userId])
+}
+
+model MessageDelete {
+  id        String   @id @default(uuid())
+  messageId String
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deletedAt DateTime @default(now())
+
+  @@unique([messageId, userId])
+  // Reverse-direction lookups for `deletedFromUsers: { none: { userId } }` filters.
+  @@index([userId])
+}
+
+model Block {
+  id        String   @id @default(uuid())
+  blockerId String
+  blocker   User     @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blockedId String
+  blocked   User     @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([blockerId, blockedId])
+}
+
+model Story {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation("UserStories", fields: [userId], references: [id], onDelete: Cascade)
+  type      StoryType
+  mediaUrl  String?
+  caption   String?
+  bgColor   String?
+  fontStyle String?
+  createdAt DateTime  @default(now())
+  expiresAt DateTime
+
+  views     StoryView[]
+  reactions StoryReaction[]
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model StoryView {
+  id       String   @id @default(uuid())
+  storyId  String
+  story    Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  viewerId String
+  viewer   User     @relation("StoryViews", fields: [viewerId], references: [id], onDelete: Cascade)
+  viewedAt DateTime @default(now())
+
+  @@unique([storyId, viewerId])
+  @@index([storyId])
+}
+
+model StoryReaction {
+  id        String   @id @default(uuid())
+  storyId   String
+  story     Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation("StoryReactions", fields: [userId], references: [id], onDelete: Cascade)
+  emoji     String
+  createdAt DateTime @default(now())
+
+  @@unique([storyId, userId])
+  @@index([storyId])
+}
+
+model Friendship {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation("UserFriendships", fields: [userId], references: [id], onDelete: Cascade)
+  friendId  String
+  friend    User     @relation("FriendOf", fields: [friendId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, friendId])
+  @@index([userId])
+  @@index([friendId])
+}
+
+model FriendRequest {
+  id         String   @id @default(uuid())
+  senderId   String
+  sender     User     @relation("SentRequests", fields: [senderId], references: [id], onDelete: Cascade)
+  receiverId String
+  receiver   User     @relation("ReceivedRequests", fields: [receiverId], references: [id], onDelete: Cascade)
+  status     String   @default("PENDING") // PENDING, ACCEPTED, REJECTED
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([senderId, receiverId])
+  @@index([receiverId])
+  @@index([senderId])
+}
+
+model Report {
+  id          String   @id @default(uuid())
+  reporterId  String
+  reporter    User     @relation("Reporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  reportedId  String
+  reported    User     @relation("Reported", fields: [reportedId], references: [id], onDelete: Cascade)
+  reason      String
+  description String?
+  mediaUrl    String?
+  expiresAt   DateTime?
+  resolved    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([expiresAt])
+}
+
+model JoinRequest {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status         String       @default("PENDING") // PENDING, APPROVED, REJECTED
+  createdAt      DateTime     @default(now())
+
+  @@unique([conversationId, userId])
+}
+
+model GroupAuditLog {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  actorId        String
+  actor          User         @relation("AuditActor", fields: [actorId], references: [id], onDelete: Cascade)
+  action         String // JOIN, LEAVE, ROLE_CHANGE, SETTINGS_EDIT, MEMBER_REMOVE, MEMBER_ADD, REQUEST_APPROVE, REQUEST_REJECT
+  targetId       String?
+  target         User?        @relation("AuditTarget", fields: [targetId], references: [id], onDelete: Cascade)
+  details        String?
+  createdAt      DateTime     @default(now())
+}
+
+
+
+enum CallStatus {
+  RINGING
+  ONGOING
+  ENDED
+  MISSED
+  REJECTED
+  CANCELLED
+}
+
+model Call {
+  id        String     @id @default(cuid())
+  callerId  String
+  calleeId  String
+  roomName  String     @unique
+  status    CallStatus @default(RINGING)
+  isVideo   Boolean    @default(false)
+  startedAt DateTime?
+  endedAt   DateTime?
+  duration  Int?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  caller User @relation("Caller", fields: [callerId], references: [id])
+  callee User @relation("Callee", fields: [calleeId], references: [id])
+
+  @@index([callerId])
+  @@index([calleeId])
+  @@index([status])
+}
+
+model NotificationQueue {
+  id         String   @id @default(uuid())
+  userId     String
+  type       String   // friend_request, call, new_message
+  title      String
+  body       String
+  data       Json?    // type-specific payload: { conversationId?, messageId?, callId?, roomName?, senderId?, senderName?, requestId? }
+  status     String   @default("PENDING") // PENDING, SENT, FAILED
+  retryCount Int      @default(0)
+  maxRetries Int      @default(3)
+  lastError  String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([status, createdAt])
+}
+
+model CipherConversation {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String   @default("New conversation")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  messages CipherMessage[]
+
+  @@index([userId, updatedAt])
+}
+
+model CipherMessage {
+  id             String              @id @default(uuid())
+  conversationId String
+  conversation   CipherConversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role             String
+  content          String
+  tokensUsed       Int                 @default(0)
+  promptTokens     Int                 @default(0)
+  completionTokens Int                 @default(0)
+  provider         String              @default("nim")
+  createdAt        DateTime            @default(now())
+
+  feedback         CipherFeedback?
+
+  @@index([conversationId, createdAt])
+  @@index([userId, createdAt])
+}
+
+model CipherFeedback {
+  id           String        @id @default(uuid())
+  messageId    String        @unique
+  message      CipherMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  promptText   String
+  responseText String
+  feedbackType String        // "good" | "bad"
+  reason       String?
+  tokensUsed   Int           @default(0)
+  createdAt    DateTime      @default(now())
+
+  @@index([feedbackType, createdAt])
+  @@index([userId, createdAt])
+}
+
+model CipherUsage {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date         DateTime
+  tokensUsed   Int      @default(0)
+  messageCount Int      @default(0)
+
+  @@unique([userId, date])
+  @@index([userId, date])
+}

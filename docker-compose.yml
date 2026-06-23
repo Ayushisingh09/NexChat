@@ -1,0 +1,65 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: nexchat-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: nexchat_4d38c10849cea51e73140ba3526a9950
+      POSTGRES_DB: nexchat
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - nexchat-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: nexchat-redis
+    restart: always
+    volumes:
+      - redis_data:/data
+    networks:
+      - nexchat-net
+
+  app:
+    build: .
+    container_name: nexchat-app
+    restart: always
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:nexchat_4d38c10849cea51e73140ba3526a9950@postgres:5432/nexchat?schema=public
+      - REDIS_URL=redis://redis:6379
+      - FRONTEND_URL=https://chat.92lrcorps.xyz
+    volumes:
+      - uploads_data:/app/uploads
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - nexchat-net
+    command: >
+      sh -c "npx prisma migrate deploy && node dist/server.js"
+
+  client:
+    build: ./client
+    container_name: nexchat-client
+    restart: always
+    ports:
+      - "5173:5173"
+    depends_on:
+      - app
+    networks:
+      - nexchat-net
+
+volumes:
+  postgres_data:
+  redis_data:
+  uploads_data:
+
+networks:
+  nexchat-net:
+    driver: bridge

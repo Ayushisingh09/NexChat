@@ -1,0 +1,11 @@
+node_modules
+dist
+.git
+client
+*.log
+npm-debug.log*
+.env.example
+Web
+get-docker.sh
+prompt.md
+*.md

@@ -1,0 +1,61 @@
+{
+  "common": {
+    "backToLogin": "Back to Login"
+  },
+  "auth": {
+    "login": "Login",
+    "loginWithOtp": "Login with OTP",
+    "loginWithPassword": "Login with Password",
+    "sendOtp": "Send OTP",
+    "sending": "Sending...",
+    "loggingIn": "Logging in...",
+    "emailOrPhone": "Email or Phone",
+    "emailOrPhonePlaceholder": "e.g. alice@example.com",
+    "password": "Password",
+    "passwordPlaceholder": "Enter password",
+    "otpCode": "OTP Code",
+    "otpPlaceholder": "6-digit code",
+    "forgotPassword": "Forgot Password?",
+    "resendIn": "Resend in {{seconds}}s",
+    "resendCode": "Resend Code",
+    "enterIdentityFirst": "Enter your email or phone first"
+  },
+  "forgot": {
+    "title": "Forgot Password?",
+    "subtitle": "Enter your email and we'll send you a link to reset your password.",
+    "email": "Email",
+    "emailPlaceholder": "you@example.com",
+    "sendResetLink": "Send Reset Link",
+    "checkEmailTitle": "Check Your Email",
+    "checkEmailBody": "If an account exists for {{email}}, we've sent a password reset link. Open it to choose a new password — the link expires in 30 minutes.",
+    "failed": "Failed to send reset link",
+    "retryIn": "Try again in {{minutes}}m"
+  },
+  "reset": {
+    "title": "Set New Password",
+    "subtitle": "Choose a strong password for your account.",
+    "newPassword": "New Password",
+    "confirmPassword": "Confirm Password",
+    "newPasswordPlaceholder": "At least 6 characters",
+    "confirmPlaceholder": "Re-enter password",
+    "passwordsNoMatch": "Passwords do not match",
+    "resetPassword": "Reset Password",
+    "resetting": "Resetting...",
+    "doneTitle": "Password Reset!",
+    "doneBody": "Your password has been updated. You can now log in with your new password.",
+    "invalidTitle": "Invalid Reset Link",
+    "invalidBody": "This password reset link is invalid or has expired. Request a new one to continue.",
+    "requestNew": "Request New Link",
+    "minLength": "Password must be at least 6 characters",
+    "failed": "Reset failed"
+  },
+  "settings": {
+    "notifications": "Notifications",
+    "pushInApp": "Push & in-app alerts",
+    "pushOn": "You'll be notified about new messages",
+    "pushOff": "All message notifications are off",
+    "sound": "Notification sound",
+    "soundDesc": "Play a sound for new alerts",
+    "language": "Language"
+  }
+}
